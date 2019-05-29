@@ -3,10 +3,301 @@
 %****************************** Second Chapter *********************************
 %*******************************************************************************
 
-\chapter{My second chapter}
+\chapter{Introductory Material}
 
 \ifpdf
     \graphicspath{{Chapter2/Figs/Raster/}{Chapter2/Figs/PDF/}{Chapter2/Figs/}}
 \else
     \graphicspath{{Chapter2/Figs/Vector/}{Chapter2/Figs/}}
 \fi
+
+\section{Variational Inference for BNNs}
+
+The objective of this project its to provide a form for searching for optimal architectures of Bayesian Neural Networks. The methodology of training these is diverse and can lead to significant differences in performance. Variational Inference was selected as the methodology for training for two reasons: it produces state of the art results on many problems \citep{bui2016deep}; and it is the most scalable method for BNNs at present, able to scale up to at least the size of medium-sized convolutions networks \citep{Shridhar2018}.
+
+Unlike the training of standard neural networks, the training of Bayesian Neural Networks (BNNs) is not a straightforward task. In standard neural networks we have a series of point weights \( \mathbf{w} \) for which we optimise the predictions of some output \( \mathbf{y}_i \) for some input data \( \mathbf{x}_i \), drawn from a dataset \( \D = \{\mathbf{x}_i, \mathbf{y}_i\}_{i=1}^N \). In the Bayesian interpretation, we place distributions over the weights of the parameters in the network, and attempt to maximise the likelihood of the data observed. This likelihood can be found by taking the expectation with respect to the weights of the joint likelihood
+\begin{align}
+	P(\mathbf{y} | \mathbf{x}) = \E_{P(\mathbf{w} | \mathbf{y}, \mathbf{x})} \left[ P(\mathbf{y}, \mathbf{w} |  \mathbf{x}) \right]
+\end{align} 
+This calculation is, with the exception of very simple cases, highly intractable when our prediction for \( \mathbf{y} \) comes from a neural network. As such, it is necessary to use approximations to be able to compute this likelihood, and to be able to maximise it with respect to the weight distributions.
+
+The form utilised in this project is a variational approximation. This simplifies the above expression by introducing a variational distribution, \( q_\phi(\mathbf{w}) \), over the weights of a form that is more simple to work with. This is developed by \citet{Hinton1993, graves2011practical}. Here the log likelihood is maximised, as it is easier.
+\begin{align}
+	\log P(\mathbf{y} | \mathbf{x}) &= 
+	\int \log  \left[P(\mathbf{y}, \mathbf{w} | \mathbf{x}) \right] d \mathbf{w}\\
+	&= \int \log \left[P(\mathbf{y} |  \mathbf{w}, \mathbf{x})P(\mathbf{w}) \frac{q_\phi(\mathbf{w})}{q_\phi(\mathbf{w})}\right] d \mathbf{w}\\
+	&\geq \int q_\phi(\mathbf{w}) \log \left[ \frac{P(\mathbf{y} |  \mathbf{w}, \mathbf{x})P(\mathbf{w})}{q_\phi(\mathbf{w})}\right] d \mathbf{w} \label{eq:jensens1}\\
+	&= \int q_\phi(\mathbf{w}) \log \left[ P(\mathbf{y} |  \mathbf{w}, \mathbf{x})\right] d \mathbf{w} - \int q_\phi(\mathbf{w}) \log \left[ \frac{q_\phi(\mathbf{w})}{P(\mathbf{w})}\right] d \mathbf{w}\\
+	&= \E_{q_\phi(\mathbf{w})}\left[ \log P(\mathbf{y} |  \mathbf{w}, \mathbf{x}) \right] - \DKL{q_\phi(\mathbf{w})}{P(\mathbf{w})}
+\end{align}
+Equation \ref{eq:jensens1} uses Jensen's inequality and \( \DKL{\cdot}{\cdot} \) is the KL-divergence. These terms are commonly called the reconstruction loss and the prior fit terms. This bound is known as the \textit{Variational Free Energy} or the \textit{Expected Lower Bound (ELBO)}. Two alternative interpretations of this exist. First, as a \textit{minimum descriptive length} \citep{Hinton1993} method for training neural networks, by minimising the amount of information encoded in the weights. Second, it can be shown that minimising this lower bound on the log likelihood is equivalent to minimising the KL divergence \( \DKL{q_\phi(\mathbf{w})}{P(\textbf{w}| \mathbf{x}, \mathbf{y})} \), i.e. the distance between the posterior weight distribution and the variational distribution, indicating this is a sensible lower bound.
+
+These terms however are not always tractable. Using \citet{Blundell2015} we approximate the terms with a Monte Carlo estimate, drawing samples from \( q_\phi(\mathbf{w}) \).
+\begin{align}
+\E_{q_\phi(\mathbf{w})}&\left[ \log P(\mathbf{y} |  \mathbf{w}, \mathbf{x}) \right] - \DKL{q_\phi(\mathbf{w})}{P(\mathbf{w})} \nonumber \\
+&\approx \frac{1}{N} \sum_{i=1}^{N} \log \left[ P(\mathbf{y} |  \mathbf{w}_i, \mathbf{x}) \right]  - \log \left[ \frac{q_\phi(\mathbf{w}_i)}{P(\mathbf{w})} \right], \; \mathbf{w}_i \sim q_\phi(\mathbf{w}_i)
+\end{align}
+In our experiments, 10 samples are used at train time and 100 at test time. Computing \( \log P(\mathbf{y} |  \mathbf{w}_i, \mathbf{x}) \) relies on deciding a form of this distribution. Here we model this homoskedastic noise, \(P(\mathbf{y} |  \mathbf{w}_i, \mathbf{x}) = \mathcal{N}(f_{\mathbf{w}_i}(\mathbf{x}), \sigma_y^2) \), with the parameter \( \sigma_y^2 \) joint optimised with the weights. An alternative option for this is using a second head to predict the variance as well. \citet{Blundell2015} shows then that standard back propagation techniques can be used to train the parameters \( \phi \) of the \( q_\phi(\mathbf{w}) \) distribution and \( \sigma_y^2 \).
+
+Unfortunately this estimator has very high variance. Two things can be done to reduce this. First, by constraining our variational distribution \( q_\phi(\mathbf{w}) \) and prior \( P(\mathbf{w}) \) to be Gaussian distributions, there is a tractable form for the KL divergence between 2 instances. For a pair of \( d \)-dimensional Normal distributions
+
+\begin{align}
+	&\DKL{\mathcal{N}(\mathbf{\mu}_1, \mathbf{\Sigma}_1)}{\mathcal{N}(\mathbf{\mu}_2, \mathbf{\Sigma}_2)}) \nonumber \\
+	&= \frac{1}{2} \left[\log \frac{|\mathbf{\Sigma}_2|}{|\mathbf{\Sigma}_1|} - d  + \Tr \left( \mathbf{\Sigma}_1^{-1} \mathbf{\Sigma}_2 \right) + (\mathbf{\mu}_1 - \mathbf{\mu}_2)^T \mathbf{\Sigma}_2^{-1} (\mathbf{\mu}_1 - \mathbf{\mu}_2) \right]
+\end{align}
+Second, by employing the reparametisation trick of \citet{Kingma2015}. Assuming our weights in a given layer are independently distributed, we write them as
+\begin{align}
+	w_{i,j} = \mu_{i,j} + \sigma_{i,j} \epsilon_{i,j}, \quad \epsilon_{i,j} \sim \mathcal{N}(0,1)
+\end{align}
+This changes the variance of the estimator from being independent of batch size, to being inversely proportional to the size of the batch. Together, these lead to significantly better empirical results.
+
+Additionally, since the weights only affect the model prediction thought the activation of the neuron they connect to, we can write the output of that neuron as the sum of the weights times the input activations. For a layer with \( J \) inputs,
+\begin{align}
+	b_i = \sum_{j=1}^{J} w_{i,j} a_j
+\end{align}
+Since this is just the sum of scaled Gaussians, the result will also be a Gaussian.
+\begin{align}
+	b_i &\sim \mathcal{N}(\gamma_i, \delta_i)\\
+	\gamma_i &= \sum_{j=1}^{J} a_j \mu_{i,j} \qquad \delta_i \sum_{j=1}^{J} = a_j^2 \sigma_{i,j}^2
+\end{align}
+Instead of sampling each weight and summing, we can therefore perform the two sums above and only sample the output distributions. Sampling the weights requires \( J^2 \) samples, whereas sampling the outputs only requires \( J \) samples, a significant reduction, especially in larger networks. This is the \textit{local} reparametisation trick.
+
+The final improvement used in later experiments is the use of \textit{hyper-priors} on the width of the priors in the network. With Gaussian priors, the width of the prior can have a significant effect on the performance of the network, and adds an additional parameter to optimise over in the search space for architectures. There rigorous is no way to determine what the optimal width will be \textit{a priori}, beyond intuition. By introducing hyper-priors on the prior width we can optimise the prior width at train time and avoid having to add this parameter to the search space. We follow the method set out in \citet{wu2018fixing}. In this case the hierarchical prior takes the form 
+\begin{align}
+	\mathbf{s} \sim P(\mathbf{s}), \quad \mathbf{w} \sim P(\mathbf{w}| \mathbf{s})
+\end{align}
+Allowing too many degrees of freedom in the hyper-priors can be detrimental, so a single hyper-prior is introduced per layer, covering all the weights in that layer (labelled \( s_\lambda \) for the hyper-prior on layer \( \lambda \)). The hyper-priors are inverse-Gamma distributed to be conjugate priors to the independent Gaussian distributions of the weights.
+\begin{align}
+	s_\lambda \sim \InvGamma(\alpha, \beta), \quad \mathbf{w}_\lambda \sim \mathcal{N}(\mathbf{0}, s_\lambda\mathbf{I}) 
+\end{align}
+Our new ELBO is simply
+\begin{align}
+\E_{q_\phi(\mathbf{w})}\left[ \log P(\mathbf{y} |  \mathbf{w}, \mathbf{x}) \right] - \DKL{q_\phi(\mathbf{w})}{P(\mathbf{w}| \mathbf{s})P(\mathbf{s})}
+\end{align}
+As an approximation, at each update step Type-2 empirical Bayes is used to estimate the MAP solution for the prior width to provide the tightest ELBO.
+\begin{align}
+	s^*_\lambda = \arg\min_{\mathbf{s}_\lambda} \left[ \DKL{q_\phi(\mathbf{w}_\lambda)}{P(\mathbf{w}_\lambda| s_\lambda)} - \log s_\lambda  \right]
+\end{align} 
+There is a closed form solution to this optimisation
+\begin{align}
+	s^*_\lambda = \frac{\Tr \left[ \mathbf{\Sigma}^q_\lambda+ \mathbf{\mu}^q_\lambda (\mathbf{\mu}^q_\lambda)^T \right] + 2\beta}{N_\lambda + 2 \alpha + 2}
+\end{align}
+Where  \( N_\lambda \) is the number of weights under the prior \( s_\lambda \). \citep{wu2018fixing} shows that this method is almost as good as or better than manual tuning of the prior width for the standard UCI datasets.
+
+One drawback of BNNs is their significant cost in training. Compare to regular neural networks they can take significantly more optimisation steps to converge. One of the main reasons for picking the variational form of BNNs with mean field weight is for the scalability in network size they present. Even these, however, are orders of magnitude slower than regular neural networks. Significant parts of these costs come from the sampling required during training, and the multiple evaluations of the network for each data-point required to produce good gradient estimates.
+
+BNNs generally have large numbers of hyper-parameters associated with architecture and training. If we consider MLPs, we have to choose a number of layers, a width for each layer, the activation functions, and the form of prior and variational distribution. Some of these are constrained by methodology, but many are free to be chosen. If we also consider the optimisation, we generally must pick a learning rate and possibly other parameters as well. Even for these small scale architectures, it therefore makes sense to utilise some kind of automated search method.
+
+\section{Bayesian Optimisation}
+The body of scientific literature focused on the optimisation of some function \( f(\mathbf{x}) \) over some set of possibility \( \mathcal{A} \) is extensive. Simply
+\begin{align}
+	\max_{\mathbf{x \in \mathcal{A} \subset \R^n}} f(x)
+\end{align}
+The large part of this assumes that \( f(\mathbf{x}) \) contains some particular property in combination with the bounds of \( \mathcal{A} \), such as convexity, a known mathematical representation, or cheapness to evaluate. 
+
+While some problems in machine learning have applications for these techniques, not all do. The assumptions of cheapness is used in the gradient-based update methods used for many algorithms, but due to the large number of iterations usually required to converge models, the overall training of machine learning models becomes incredibly expensive. This makes the results of trained algorithms comparatively expensive and usually an objective function that one might cast on the results of these, such as finding optimal hyper-parameter setting for an algorithm for accuracy, a non-convex function in its inputs. Most standard efficient optimisation methods are therefore inappropriate for performing meta-tasks on the hyper-parameters of machine learning algorithms.
+
+Bayesian Optimisation is a powerful method for finding the maxima or minima of black box functions with expensive objectives with no special structure to the objective efficiently. It is also a gradient-free method, and so can handle situations where the gradients of the objective with respect to the parameters is intractable. Finally it is possible to handle, to a degree, noisy evaluations of the objective function with this method.
+
+These properties have made Bayesian Optimisation a key method in applications such as clinical trials and finance, and also make them suitable to the architecture search problem.
+
+Bayesian optimisation relies on the Bayesian inference of the most likely model (\( M \)) of the data, given the evidence seen (\( E \)). This can be done via Bayes rule
+\begin{align}
+	P(M|E) \propto P(E|M)P(M)
+\end{align}
+To do this we on placing a prior over the possible functions that could describe the data, \( P(M) \), and computing the likelihood of the evidence seen under these models, \( P(E|M) \). In terms of a function that might model the data, \( f \), and our observed data so far, \( \mathcal{D}_{1:t} = \{\mathbf{x}_i, \mathbf{y}_i\}_{i=1}^t \)
+\begin{align}
+	P(f|\mathcal{D}_{1:t}) \propto P(\mathcal{D}_{1:t} | f)P(f)
+\end{align}
+The Bayesian optimisation process is then an iterative one. Taking the distribution over functions, we maximise some objective function, usually called the \textit{acquisition function}, with respect to this distribution and sample the new point at the optima of the acquisition function. Algorithm \ref{alg:bo} set out the simple procedure for performing Bayesian optimisation.
+
+\begin{algorithm}[t]
+	\footnotesize
+	\For{t=1,2, ...}{
+		Compute the posterior likelihood \( P(f|\mathcal{D}_{1:t}) \)
+		
+		Find \( \mathbf{x}_t \) by optimising the aquisition function over the seen data, \begin{align}
+			\mathbf{x}_t = \arg\min_{\mathbf{x}} u_{f(\mathbf{x}) \sim P(f|\mathcal{D}_{1:t})}(\mathbf{x}|\mathcal{D}_{1:t-1})
+		\end{align}
+		
+		Sample the objective function \( y_t = f(\mathbf{x}_t) + \epsilon_t \)
+		
+		Update the dataset \( \mathcal{D}_{1:t}  = \{ \mathcal{D}_{1:t-1}, (\mathbf{x}_t, y_t)  \}\)
+	}
+		
+	\caption{Bayesian Optimisation}
+	\label{alg:bo}
+\end{algorithm}
+
+Two questions are raised by this: how to perform the inference of \( P(f|\mathcal{D}_{1:t}) \), and what form the acquisition function should take. A discussion of both questions follows.
+
+\subsection{Gaussian Processes as function priors}
+Gaussian Processes are an elegant way to deal with inferring a distribution over possible functions from some observations and a prior. The prior over the function is defined by some mean function on \( \mathbf{x} \), \( m(\cdot) \), and some covariance function between data-points, \( k(\cdot, \cdot) \)
+\begin{align}
+	f(\mathbf{x}) \sim \GP(m(\mathbf{x}), k(\mathbf{x}, \mathbf{x}'))
+\end{align}
+
+In essence this returns the mean and variance of a Normal distribution for a given point \( \mathbf{x} \). It is usual to set the mean function to zero, both for convenience and the fact that for data we know little about, this is likely the best assumption (in particular if we normalise observed data). This leaves us just with the choice of covariance function. 
+
+In the predictive setting, we want to infer predictions about new data points from previously seen data. We know that all points on our function \( f \) are jointly Gaussian. If we have observed the points \( \mathbf{x}_{1:t}, \mathbf{f}_{1:t} \) and wish to make predictions about \( f_{t+1}(\mathbf{x}_{t+1}) \) then we can write
+\begin{align}
+	\begin{bmatrix}
+		\mathbf{f}_{1:t} \\
+		f_{t+1}
+	\end{bmatrix}
+	\sim 
+	\mathcal{N} \left( \mathbf{0}, 
+	\begin{bmatrix}
+		\mathbf{K} & \mathbf{k}\\
+		\mathbf{k}^T & k(\mathbf{x}_{t+1}, \mathbf{x}_{t+1})
+	\end{bmatrix} \right)
+\end{align}
+where 
+\begin{align}
+	\mathbf{K} &= \begin{bmatrix}
+		k(\mathbf{x}_1, \mathbf{x}_1) & k(\mathbf{x}_1, \mathbf{x}_2) & \cdots & k(\mathbf{x}_1, \mathbf{x}_t)\\
+		k(\mathbf{x}_2, \mathbf{x}_1)& k(\mathbf{x}_2, \mathbf{x}_2) & \cdots & k(\mathbf{x}_2, \mathbf{x}_t)\\
+		\vdots & \vdots & \ddots & \vdots\\
+		k(\mathbf{x}_t, \mathbf{x}_1)& k(\mathbf{x}_t, \mathbf{x}_2) & \cdots & k(\mathbf{x}_t, \mathbf{x}_t)\\
+	\end{bmatrix}
+	\\
+	\mathbf{k} &= \begin{bmatrix}
+	k(\mathbf{x}_{t+1}, \mathbf{x}_1)& k(\mathbf{x}_{t+1}, \mathbf{x}_2) & \cdots & k(\mathbf{x}_{t+1}, \mathbf{x}_t)
+	\end{bmatrix}
+\end{align}
+Using the  Sherman-Morrison-Woodbury formula we can compute the distribution of \( f_{t+1}(\mathbf{x}_{t+1}) \)
+\begin{align}
+	f_{t+1}(\mathbf{x}_{t+1}) \sim \mathcal{N}(\mu_t(\mathbf{x}_{t+1}), \sigma^2_t(\mathbf{x}_{t+1}))
+\end{align}
+where
+\begin{align}
+	\mu_t(\mathbf{x}_{t+1}) &= \mathbf{k}^T\mathbf{K}^{-1}\mathbf{f}_{1:t}\\
+	\sigma_t^2(\mathbf{x}_{t+1}) &= k(\mathbf{x}_{t+1}, \mathbf{x}_{t+1}) - \mathbf{k}^T\mathbf{K}^{-1}\mathbf{k}
+\end{align}
+Note that once \( \mathbf{K}^{-1} \) has been computed, and this is an \( \mathcal{O}(n^3) \) operation, then computing \( \mu_t(\mathbf{x}_{t+1}) \) and \( \sigma_t^2(\mathbf{x}_{t+1}) \) is comparatively fast as it only involves computing kernels and linear matrix multiplications. This means predicting multiple points comes at little additional cost compared to a single point. If we wish to model some noise \( \sigma_y^2 \) on the function, then the equations become
+\begin{align}
+	\mu_t(\mathbf{x}_{t+1}) &= \mathbf{k}^T \left(\mathbf{K} + \sigma_y^2\mathbf{I} \right)^{-1} \mathbf{f}_{1:t}\\
+	\sigma_t^2(\mathbf{x}_{t+1}) &= k(\mathbf{x}_{t+1}, \mathbf{x}_{t+1}) - \mathbf{k}^T\left(\mathbf{K} + \sigma_y^2\mathbf{I} \right)^{-1}\mathbf{k}
+\end{align}
+and this parameter \( \sigma_y^2 \) can be optimised like any other parameter.
+
+A more in depth treatment of GPs can be found in \citet{williams2006gaussian}.
+
+The choice of kernel then is the prior that we place on the function, and the conditioning on the data our computation of the likelihood of different models having observed some data. We can then observe the distribution of the posterior by sampling from it at points of interest, as described above.
+
+The choice of kernel is an area with significant literature. In this project we use  Exponential Quadratic (EQ) kernels and Linear kernels. EQ kernels have become a default choice for GPs as they have several attractive properties: it is infinitely smooth in its derivatives, and it has only two hyper-parameters. It has the form
+\begin{align}
+	k_{SE}(x, x') = \sigma^2 \exp\left(-\frac{(x - x')^2}{l^2}\right)
+\end{align} 
+The two hyper-parameters are:
+\begin{itemize}
+	\item[\( l \)]  - The length scale controls the length scale of the function, how fast the function will change with respect to its inputs.
+	\item[\( \sigma \)] - The output variance determines the average distance of the function from the mean.
+\end{itemize}
+
+The linear kernel has the form
+\begin{align}
+	k_{Lin}(x, x') = \sigma_b^2 + \sigma_v^2(x-c)(x'-c)
+\end{align}
+This has 3 hyper-parameters:
+\begin{itemize}
+	\item[\( \sigma_b^2 \)] - This places a prior on how far from 0 the hight of the function will be when \( x = c \) or \( x' = c \), akin to the intercept.
+	\item[\( \sigma_v^2 \)] - This determines the functions average distance from the mean.
+	\item[\( c \)] - This determines the x coordinate at which all posterior function lines will pass through. At this point the function will only have covariance from \( \sigma_b^2 \) and noise.
+\end{itemize}
+
+We use additive combinations of these kernels to produce more powerful function priors. 
+
+The choice of hyper-parameters in the chosen kernel has a significant effect on the form of the posterior function. It is therefore common to iteratively optimise these hyper-parameters to optimise the train set log-likelihood.
+
+More information on different kernels, and an excellent guide on kernel choice, see \citet{duvenaud2014automatic}. \citet{williams2006gaussian} also contains information on more complex kernels, combing kernels and advanced GP methods.
+
+\subsection{Acquisition functions}
+
+Three main acquisition functions are considered, and are the most commonly used in Bayesian Optimisation. These are the Expected Improvement (EI) function, the Probability of Improvement (PI) function and the Upper Confidence Bound function (UCB). 
+
+\subsubsection{Probability of Improvement}
+
+The most intuitive of these is the Probability of Improvement function \citep{kushner1964new}. This is simply the probability that a given point will be better than the current best point.
+\begin{align}
+	\PI(\mathbf{x}) = Pr(f(\mathbf{x}) \geq f(\mathbf{x}^+)
+\end{align}
+Where \( f(\mathbf{x}^+) \) is the value of the best point found so far. This is exactly
+\begin{align}
+	\PI(\mathbf{x}) = \Phi\left(\frac{\mu(\mathbf{x}) - f(\mathbf{x}^+)}{\sigma(\mathbf{x})}\right)
+\end{align}
+with \( \Phi(\cdot) \) as the Normal cumulative density function. This is an inherently highly exploitative function, and will always pick the most likely place to get a gain. Points with a small variance and slightly higher mean than the best point will be favoured over those with higher variance and mean, leading to strong exploration of local maxima and less likelihood of exploration far away from local maxima. This can present issues if a local maximum is not globally maximal. This is best seen by considering PI in another form. If we consider the reward for a given point as
+\begin{align}
+	R(\mathbf{x}) = \begin{cases}
+	 1 & f(\mathbf{x}) > f(\mathbf{x}^+)\\
+	 0 & f(\mathbf{x}) \leq f(\mathbf{x}^+)
+	\end{cases}
+\end{align}
+Taking the expectation of this with respect to the current GP posterior at point \( \mathbf{x} \) gives us
+\begin{align}
+	\E_{f(\mathbf{x}) \sim \GP(\mu(\mathbf{x}), \sigma^2(\mathbf{x})| \mathcal{D})}\left[  R(\mathbf{x}) \right] = \Phi\left(\frac{\mu(\mathbf{x}) - f(\mathbf{x}^+)}{\sigma(\mathbf{x})}\right)
+\end{align}
+
+\subsubsection{Expectation of Improvement}
+This leads to the form of the second acquisition function, Expected Improvement \citep{jones1998efficient, mockus1978toward}. Instead of defining the reward as rewarding any improvement, the reward is defined as the amount it will improve over the current best point
+\begin{align}
+	R(\mathbf{x}) = \max\left[0, f(\mathbf{x}) - f(\mathbf{x}^+)\right]
+\end{align}
+Taking the expectation of this over the distribution of \( f(\mathbf{x}) \)
+\begin{align}
+	\E&_{f(\mathbf{x}) \sim \GP(\mu(\mathbf{x}), \sigma^2(\mathbf{x})| \mathcal{D})}\left[  R(\mathbf{x}) \right] \\
+	&= \int_{f(\mathbf{x}^+)}^{\infty} (f(\mathbf{x}) - f(\mathbf{x}^+)) \mathcal{N}(f(\mathbf{x}); \mu(\mathbf{x}), \sigma^2(\mathbf{x})) d f(\mathbf{x})\\
+	\EI(\mathbf{x})&= \begin{cases}
+		(\mu(\mathbf{x}) - f(\mathbf{x}^+)) \Phi(Z) + \sigma(\mathbf{x})\phi(Z) & \sigma(\mathbf{x}) > 0\\
+		0 & \sigma(\mathbf{x}) = 0
+	\end{cases},\\
+	Z &= \frac{\mu(\mathbf{x}) - f(\mathbf{x}^+)}{\sigma(\mathbf{x})}
+\end{align}
+This acquisition function should be more exploratory in nature than the PI acquisition function, favouring places where there is the possibility to make larger improvements.
+
+\subsubsection{Upper Confidence Bound}
+The final acquisition function used is the Upper Confidence Bound acquisition \citep{cox1992statistical}. This is defined as
+\begin{align}
+	\UCB(\mathbf{x}) = \mu(\mathbf{x}) + \kappa \sigma(\mathbf{x}), \; \kappa \geq 0
+\end{align}
+The parameter \( \kappa \) is left to the user to determine. In experiments we set this to 1. The value of \( \kappa \) will determine the algorithm’s balance between exploration (high \( \kappa \)) and exploitation (low \( \kappa \)).
+
+These three options give rise to significantly different sampling patterns and performance on different tasks. The choice between these three, or any other acquisition function, is unclear and there are few heuristics to help make a decision. 
+
+\section{The Gaussian Process Autoregressive Regression Model (GPAR)}
+
+The Gaussian Processes discussed so far are single output - they can only model one target variable for the given set of inputs. If we wish to model a multi-output function, for example the progression in performance of training BNNs through time, this is clearly inadequate. One option in modelling multi-output GPs is to train \( k \) independent GPs for \( k \) outputs desired. However, this will ignore and dependency between outputs and so can lose a significant amount of information.
+
+One option for introducing dependency between the various outputs is to use the Gaussian Process Auto Regressive model (GPAR) introduced by \citet{Requeima2018}. This model builds on a particular decomposition of the joint likelihood of the outputs. Consider
+
+\begin{align}
+	P(\mathbf{y}_{1:k}(\mathbf{x})| \mathbf{x}) &= P(y_1(\mathbf{x}), y_2(\mathbf{x}), ..., y_k(\mathbf{x})|\mathbf{x})\\
+	&= P(y_1(\mathbf{x}) | \mathbf{x}) P(y_2(\mathbf{x}) | y_1(\mathbf{x}), \mathbf{x}) ... P(y_k(\mathbf{x}) | y_{k-1}(\mathbf{x}), ..., y_1(\mathbf{x}), \mathbf{x})\\
+	&= \prod_{i=1}^{k}P(y_i(\mathbf{x}) | \mathbf{y}_{1:i-1}(\mathbf{x}), \mathbf{x})
+\end{align}
+
+This form assumes that each \( y_i \) has been sequentially generated as a function of the previous \( \mathbf{y}_{1:i-1} \). We shall see later this is a property we desire. We then view these individual \( y_i \) as random functions with inputs of the input and previous outputs. 
+\begin{align}
+	y_1(\mathbf{x}) &= f_1(\mathbf{x})\\
+	y_2(\mathbf{x}) &= f_2(\mathbf{x}, y_1(\mathbf{x}))\\
+	\vdots\\
+	y_k(\mathbf{x}) &= f_k(\mathbf{x}, y_1(x), ... ,y_{k-1}(\mathbf{x})
+\end{align}
+The GPAR model then models each of these individual \( f_i \)'s as Gaussian processes such that
+\begin{align}
+	y_i|y_{1:i-1} \sim \GP(0, k_i(y_{1:-1}(\mathbf{x}), \mathbf{x}, y_{1:-1}(\mathbf{x}'), \mathbf{x}'))
+\end{align}
+Although each of the conditionals are Gaussian, the joint distribution is not. The moments of the joint distribution are generally intractable. It is however possible to sample from the whole model by incrementally sampling from each of the conditionals in turn.
+
+Further details of training and inference can be found in \citet{Requeima2018}, however there are two key takeaways that make GPAR a good model to use.
+\begin{itemize}
+	\item Inference and learning in GPAR for \( M \) outputs and \( N \) inputs corresponds to learning \( M \) independent GPs, and so scales with \( \mathcal{O}(MN^3) \), rather than the \( \mathcal{O}(M^3N^3) \) of general multioutput GPs. This includes hyper-parameter optimisation techniques. Additionally standard scaling techniques such as sparse approximations can be applied off the shelf.
+	\item  Also long as the dataset is \textit{closed downward}, defined as if an observation exists for \( y_i \), then there also exist observations for \( \mathbf{y}_{1:i-1} \), but not necessarily for any \( y_{>i} \), then the model remains exact.
+\end{itemize}
+Three additional elements are used in this report not considered in \citet{Requeima2018}. 
+
+First, that it is possible to joint-optimise the hyper-parameters of preceding GPs. This is done by fitting the GPs in order, and sequentially accumulating the log-likelihoods of the preceding GPs together. Alternatively one can fit the GPs in order and fix the hyper-parameters of the previous GPs when fitting the next. Empirically if joint optimisation is used, it is empirically sensible to independently fit the GPs first. This joint training is however more expensive and it not always beneficial. The effect of this is investigated.
+
+Second, the tying some of hyper-parameters of kernels together. The data considered in \cite{Requeima2018} has significantly different properties in each of the outputs. However, in the data considered in this project the various outputs may well share very similar length scales. While this is not much use when we have a large amount to data to consider, in situations where little data is available, tying various hyper-parameters of the kernels that consider the inputs \( \mathbf{x} \) only may lead to better fits.
+
+Finally, the use of a Markov structure in the outputs. For example in time ordered outputs it may be beneficial to consider the output \( i \) as a function of up to only the previous \( n \) outputs. This is not quite truly a Markov structure - the hyper-parameters are still not time-independent and they will be different for each \( f_i \) - but they will only depend on a given number of previous time steps. The potential upside to this is twofold. First, it can significantly reduce the number of hyper-parameters. The effect of this can be a better fit in lower data situations as it an prevent over-fitting. Second is a speed up in training. The downsides to this may be some loss in accuracy, but this may be acceptable, or even minimal. The effect of this is also investigated.

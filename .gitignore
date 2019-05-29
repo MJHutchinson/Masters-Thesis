@@ -19,10 +19,6 @@
 # these rules might exclude image files for figures etc.
 # *.ps
 # *.eps
-# *.pdf
-
-## Generated if empty string is given at "Please type another file name for output:"
-.pdf
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
 *.bbl
@@ -240,3 +236,50 @@ TSWLatexianTemp*
 
 # generated if using elsarticle.cls
 *.spl
+
+# Template ignore 
+
+*.tdo*
+.DS_Store*
+*.aux*
+*.log*
+*.lof*
+*.lot*
+*.out*
+*.gz*
+*.toc*
+*.bbl*
+*.blg*
+*~*
+*.nlo*
+*make*
+*.d*
+*.bcf*
+*.blg*
+*~*
+*.nlo*
+*make
+*.d
+*.btmp*
+*.xdv*
+*.fls*
+*.glo*
+*.idx*
+*.ist*
+*.ilg*
+*.ind*
+*cookie*
+*#*
+*.nls*
+*.nlg*
+thesis.txt*
+thesis.bcf*
+thesis.run.xml*
+*run.xml*
+*.latexmkrc*
+*_latexmk*
+
+# me
+
+_useful_bits.tex
+_template_thesis/*

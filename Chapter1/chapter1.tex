@@ -3,10 +3,38 @@
 %*********************************** First Chapter *****************************
 %*******************************************************************************
 
-\chapter{Getting started}  %Title of the First Chapter
+\chapter{Introduction}  %Title of the First Chapter
 
 \ifpdf
     \graphicspath{{Chapter1/Figs/Raster/}{Chapter1/Figs/PDF/}{Chapter1/Figs/}}
 \else
     \graphicspath{{Chapter1/Figs/Vector/}{Chapter1/Figs/}}
 \fi
+
+Standard neural networks have revolutionised the machine learning field, improving performance by orders of magnitude over previous methods in a wide variety of applications, particularly in tasks with significant quantities of data. A key part of the success of these methods has come from designing bespoke architectures, which also work well with deep learning optimisation methods. The design of these networks has two distinct parts: the choice of building blocks for the networks, and the structure in which these blocks are connected together.
+
+The design of new building blocks has been the main driver in performance of these networks. Generally these have increased performance in one of two ways. 
+
+Firstly, by providing a significant reduction in the number of parameters of the network while maintaining the networks level of expressibility on a given task. Since these layers are usually a constrained form of a fully connected layer, this could also be viewed as providing a form of "hard regularisation" in the network by building in invariance in sensible ways. Examples of this include conventional layers, building in local connectivity and translation invariance or recurrent networks, building in time invariance. Designing these new layers has yet to be automated, and given the ingenuity involved in doing so, it is unlikely this will happen in the near future. 
+
+Secondly, by improving the optimisation of neural networks with gradient based methods. Examples of this include the use of the RELU unit, residual layers, skip connections and highway connections.
+
+The configuration in which these building blocks are connected together, and the various hyper-parameters associated with them, are also important. The configuration of these blocks defines the "predictive power" of the network, and encodes a prior belief about how the outputs should be predicted from the inputs. This configuration can play a significant role in the performance of neural networks; for example the progression from LeNet \citep{LeCun1989} to AlexNet \citep{NIPS2012_4824} to the Inception line of architectures \citep{DBLP:journals/corr/SzegedyLJSRAEVR14,DBLP:journals/corr/SzegedyVISW15,DBLP:journals/corr/SzegedyIV16} is largely a result of connecting convolution filters, pooling and fully connected layers in different configurations, showing that this is a significant factor. 
+
+The purpose of architecture search therefore is to explore some defined space of possible architectures and find architectures that perform best. This is a non-trivial process. Usually the search space is extremely large, and individual architectures expensive to evaluate. Traditionally this search has been done by hand, utilising human intuition. This has therefore led to a situation where significant amounts of research time are  spent testing different configurations of neural networks, looking for minor improvements. Benefits of an automated approach to architecture search are
+\begin{itemize}
+	\item[\( \diamond \)] A reduction in research time spent directly on searching for incrementally better architectures. An automated procedure could take over the larger part of the menial work on this task, freeing research time for alternative pursuits.
+	\item[\( \diamond \)] A reduction in the influence of human bias on the search procedure. Human designers of networks have a preference for regular and seemingly ordered structures for neural networks. As can be observed in many architecture search papers \cite{Baker2016,Brock2017,zoph2016neural,zoph2018learning}, these are often not optimal architectures. Automated methods would explore the space of architectures without this particular bias.
+	\item[\( \diamond \)] An ability to tailor models to specific problems. Much of the work carried out discovering new architectures consists of looking at performance on a single dataset and transferring the architectures discovered on these datasets to other problems. This can introduce data specific bias into the architectures used. An automated method with little human interaction required could be used to tailor networks to specific problems for better performance. 
+\end{itemize}
+
+The case for automated architecture search is clear, and there has been substantial work in this area, which will be discussed later. However, none of this work has looked at architecture search for designing Bayesian Neural Networks (BNNs). This Bayesian interpretation of neural networks has several attractive properties in contrast to regular neural networks. To name a few:
+\begin{itemize}
+	\item[\( \diamond \)] BNNs provide uncertainty estimates in their predictions. In comparison to standard neural networks which produce point estimates, or can be confidently wrong when using softmax layers in classification, BNNs provide well-calibrated uncertainty in their predictions as a result of their probabilistic formulation. These uncertainty estimates provide advantages in making decisions in situations where there is significant risk in making incorrect prediction, such as medicine or finance, or in exploration-based tasks such as reinforcement learning. 
+	\item[\( \diamond \)] BNNS are more robust to a series of effects that exploit the highly specific configuration of weights in a neural network, such as adversarial attacks  \citep{Liu2018}. This robustness comes from integrating or sampling across the posterior parameter space.
+	\item[\( \diamond \)] Due to the probabilistic nature of the weights, several techniques have been developed for probabilistic models that cannot be applied to regular neural networks without some modification, such as continual learning \citep{Swaroop2019}, distributed learning \citep{Bui} or active learning, which can be applied to BNNs readily.
+\end{itemize}
+
+BNNs do have some downsides. They are usually significantly more expensive to train than regular neural networks. Due to the probabilistic, but intractable, nature of the weights, many Monte Carlo samples are generally required to produce good gradient and prediction estimates. This additional cost at present has prevented these methods from being scaled up to typical deep neural network sizes. The training of BNNs can also be tricky to get right, particularly in finding good hyper-parameter settings and architecture sizes which do not lead to over-fitting or under-fitting. As a result of these reasons, BNNs are yet to see wide spread adoption. 
+
+The advantages of BNNs and the lack of work on architecture search on them naturally leads to the topic of this project. The first aim is to provide a characterisation of the performance of fully connected networks, trained under a Variational Inference framework (VI) \nomenclature[z-VI]{VI}{Variational Inference} The objective of this is to provide a preliminary investigation into how the various hyper-parameters of this particular space affect network performance. Given the very large search space and the inefficiency in exploring this manually, the second aim is to investigate automatic methods of exploring the search space.

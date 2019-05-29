@@ -1,0 +1,299 @@
+\usepackage[pdftex,dvipsnames]{xcolor}
+
+% ******************************************************************************
+% ****************************** Custom Margin *********************************
+
+% Add `custommargin' in the document class options to use this section
+% Set {innerside margin / outerside margin / topmargin / bottom margin}  and
+% other page dimensions
+\ifsetCustomMargin
+  \RequirePackage[left=25mm,right=25mm,top=25mm,bottom=25mm]{geometry}
+  \setFancyHdr % To apply fancy header after geometry package is loaded
+\fi
+
+% Add spaces between paragraphs
+%\setlength{\parskip}{0.5em}
+% Ragged bottom avoids extra whitespaces between paragraphs
+\raggedbottom
+% To remove the excess top spacing for enumeration, list and description
+%\usepackage{enumitem}
+%\setlist[enumerate,itemize,description]{topsep=0em}
+
+% *****************************************************************************
+% ******************* Fonts (like different typewriter fonts etc.)*************
+
+% Add `customfont' in the document class option to use this section
+
+\ifsetCustomFont
+  % Set your custom font here and use `customfont' in options. Leave empty to
+  % load computer modern font (default LaTeX font).
+  %\RequirePackage{helvet}
+
+  % For use with XeLaTeX
+  %  \setmainfont[
+  %    Path              = ./libertine/opentype/,
+  %    Extension         = .otf,
+  %    UprightFont = LinLibertine_R,
+  %    BoldFont = LinLibertine_RZ, % Linux Libertine O Regular Semibold
+  %    ItalicFont = LinLibertine_RI,
+  %    BoldItalicFont = LinLibertine_RZI, % Linux Libertine O Regular Semibold Italic
+  %  ]
+  %  {libertine}
+  %  % load font from system font
+  %  \newfontfamily\libertinesystemfont{Linux Libertine O}
+\fi
+
+% *****************************************************************************
+% **************************** Custom Packages ********************************
+
+% ************************* Algorithms and Pseudocode **************************
+
+%\usepackage{algpseudocode}
+
+
+% ********************Captions and Hyperreferencing / URL **********************
+
+% Captions: This makes captions of figures use a boldfaced small font.
+%\RequirePackage[small,bf]{caption}
+
+\RequirePackage[labelsep=space,tableposition=top]{caption}
+\renewcommand{\figurename}{Fig.} %to support older versions of captions.sty
+
+
+% *************************** Graphics and figures *****************************
+
+%\usepackage{rotating}
+%\usepackage{wrapfig}
+
+% Uncomment the following two lines to force Latex to place the figure.
+% Use [H] when including graphics. Note 'H' instead of 'h'
+%\usepackage{float}
+%\restylefloat{figure}
+
+% Subcaption package is also available in the sty folder you can use that by
+% uncommenting the following line
+% This is for people stuck with older versions of texlive
+%\usepackage{sty/caption/subcaption}
+\usepackage{subcaption}
+
+% ********************************** Tables ************************************
+\usepackage{booktabs} % For professional looking tables
+\usepackage{multirow}
+
+%\usepackage{multicol}
+%\usepackage{longtable}
+%\usepackage{tabularx}
+
+
+% *********************************** SI Units *********************************
+\usepackage{siunitx} % use this package module for SI units
+
+
+% ******************************* Line Spacing *********************************
+
+% Choose linespacing as appropriate. Default is one-half line spacing as per the
+% University guidelines
+
+% \doublespacing
+% \onehalfspacing
+% \singlespacing
+
+
+% ************************ Formatting / Footnote *******************************
+
+% Don't break enumeration (etc.) across pages in an ugly manner (default 10000)
+%\clubpenalty=500
+%\widowpenalty=500
+
+%\usepackage[perpage]{footmisc} %Range of footnote options
+
+
+% *****************************************************************************
+% *************************** Bibliography  and References ********************
+
+%\usepackage{cleveref} %Referencing without need to explicitly state fig /table
+
+% Add `custombib' in the document class option to use this section
+
+%\usepackage{natbib}
+%\setcitestyle{authoryear,open={(},close={)}}
+%
+%\ifuseCustomBib
+%   %\RequirePackage[round, sort, numbers, authoryear]{natbib} % CustomBib
+%   \usepackage{natbib}
+%   \setcitestyle{authoryear,open={(},close={)}}
+   
+
+% If you would like to use biblatex for your reference management, as opposed to the default `natbibpackage` pass the option `custombib` in the document class. Comment out the previous line to make sure you don't load the natbib package. Uncomment the following lines and specify the location of references.bib file
+
+%\RequirePackage[backend=biber, style=numeric-comp, citestyle=numeric, sorting=nty, natbib=true]{biblatex}
+%\addbibresource{References/references} %Location of references.bib only for biblatex, Do not omit the .bib extension from the filename.
+%
+%\fi
+
+% changes the default name `Bibliography` -> `References'
+\renewcommand{\bibname}{References}
+
+
+% ******************************************************************************
+% ************************* User Defined Commands ******************************
+% ******************************************************************************
+
+% *********** To change the name of Table of Contents / LOF and LOT ************
+
+%\renewcommand{\contentsname}{My Table of Contents}
+%\renewcommand{\listfigurename}{My List of Figures}
+%\renewcommand{\listtablename}{My List of Tables}
+
+
+% ********************** TOC depth and numbering depth *************************
+
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+
+
+% ******************************* Nomenclature *********************************
+
+% To change the name of the Nomenclature section, uncomment the following line
+
+%\renewcommand{\nomname}{Symbols}
+
+
+% ********************************* Appendix ***********************************
+
+% The default value of both \appendixtocname and \appendixpagename is `Appendices'. These names can all be changed via:
+
+%\renewcommand{\appendixtocname}{List of appendices}
+%\renewcommand{\appendixname}{Appndx}
+
+% *********************** Configure Draft Mode **********************************
+
+% Uncomment to disable figures in `draft'
+%\setkeys{Gin}{draft=true}  % set draft to false to enable figures in `draft'
+
+% These options are active only during the draft mode
+% Default text is "Draft"
+%\SetDraftText{DRAFT}
+
+% Default Watermark location is top. Location (top/bottom)
+%\SetDraftWMPosition{bottom}
+
+% Draft Version - default is v1.0
+\SetDraftVersion{v3.0}
+
+% Draft Text grayscale value (should be between 0-black and 1-white)
+% Default value is 0.75
+%\SetDraftGrayScale{0.8}
+
+
+% ******************************** Todo Notes **********************************
+%% Uncomment the following lines to have todonotes.
+
+
+\usepackage{xargs}
+
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+
+\ifsetDraft
+	%\usepackage[pdftex,dvipsnames]{xcolor}
+	\newcommandx{\unsure}[2][1=]{\todo[linecolor=red,backgroundcolor=red!25,bordercolor=red,#1,inline]{#2}}
+	\newcommandx{\change}[2][1=]{\todo[linecolor=blue,backgroundcolor=blue!25,bordercolor=blue,#1,inline]{#2}}
+	\newcommandx{\info}[2][1=]{\todo[linecolor=OliveGreen,backgroundcolor=OliveGreen!25,bordercolor=OliveGreen,#1,inline]{#2}}
+	\newcommandx{\improvement}[2][1=]{\todo[linecolor=Plum,backgroundcolor=Plum!25,bordercolor=Plum,#1,inline]{#2}}
+	\newcommandx{\thiswillnotshow}[2][1=]{\todo[disable,#1,inline]{#2}}
+	\newcommand{\mynote}[1]{\todo[inline]{#1}}
+\else
+	\newcommand{\mynote}[1]{}
+	\newcommandx{\unsure}[2][1=]{}
+	\newcommandx{\change}[2][1=]{}
+	\newcommandx{\info}[2][1=]{}
+	\newcommandx{\improvement}[2][1=]{}
+	\newcommandx{\thiswillnotshow}[2][1=]{}
+	%\newcommand{\listoftodos}{}
+\fi
+
+% Example todo: \mynote{Hey! I have a note}
+
+% *****************************************************************************
+% ******************* Better enumeration my MB*************
+\usepackage{enumitem}
+
+% My stuff added
+\usepackage{parskip}
+\setlength{\parindent}{1em}
+\usepackage{amssymb}
+\usepackage{lipsum}
+\usepackage{layouts}
+\usepackage{placeins}
+\usepackage{pdflscape}
+\usepackage{multirow}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{array,ragged2e}
+\usepackage{tikz}
+\usepackage{afterpage}
+
+%\usepackage[bitstream-charter]{mathdesign}
+%\usepackage{charter} 
+
+%\setlength{\parskip}{0em}
+
+\usepackage{titlesec}
+\titleformat{\chapter}[display]   
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}   
+\titlespacing*{\chapter}{0pt}{0pt}{40pt}
+
+%*********** Table definitions ***********
+
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%*********** Math definitions ***********
+
+\DeclareMathOperator{\p}{p}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\InvGamma}{Inv-Gamma}
+\DeclareMathOperator{\ELBO}{ELBO}
+\DeclareMathOperator{\GP}{\mathcal{GP}}
+\DeclareMathOperator{\PI}{PI}
+\DeclareMathOperator{\EI}{EI}
+\DeclareMathOperator{\UCB}{UCB}
+\DeclareMathOperator{\BNN}{BNN}
+
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\DKL}[2]{\mathcal{D}_{KL} \left( #1 \| #2 \right) }
+
+% define datasets
+\def\bostonvar{bostonHousing}
+\def\bostonname{Boston Housing}
+
+\def\concretevar{concrete}
+\def\concretename{Concrete}
+
+\def\energyvar{energy}
+\def\energyname{Energy}
+
+\def\kinvar{kin8nm}
+\def\kinname{Kinematics 8nm}
+
+\def\mnistvar{mnist}
+\def\mnistname{MINST }
+
+\def\navalnvar{naval-propulsion-plant}
+\def\navalnname{Naval Propulsion Plant}
+
+\def\powervar{power-plant}
+\def\powername{Power Plant}
+
+\def\proteinvar{protein-tertiary-structure}
+\def\proteinname{Protein Tertiary Structure}
+
+\def\winevar{wine-quality-red}
+\def\winename{Wine Quality}
+
+\def\yachtnvar{yacht}
+\def\yachtname{Yacht}
+
+

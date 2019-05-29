@@ -2,7 +2,7 @@
 %*******************************************************************************
 %****************************** Third Chapter **********************************
 %*******************************************************************************
-\chapter{My third chapter}
+\chapter{Architecture Search for BNNs using GPAR Bayesian Optimisation}
 
 % **************************** Define Graphics Path **************************
 \ifpdf
@@ -10,3 +10,91 @@
 \else
     \graphicspath{{Chapter3/Figs/Vector/}{Chapter3/Figs/}}
 \fi
+
+\section{Position of this project}
+
+Briefly, I place this project in context of the state of the rest of the field.
+
+Due to the significantly higher computational load of BNNs, the lack of application to large-scale CNNs and the limited computational resources available, we elected to perform searches on MLP networks for regression problems. In light of this it is impossible to use the advances in search spaces proposed recently. Instead we choose a \textbf{Space Space} defined in 2 parameters: the layer depth and layer width. By fixing all layer widths to be the same, we avoid the issues surrounding conditional search spaces. Given we can only have integer layer sizes and depths, the search space is still a discrete space. However given that the ordinality of the coordinates will likely be strong predictors for the model performance, we treat this as a constrained continuous space, allowing the application of Gaussian Process and therefore Bayesian Optimisation methods as the \textbf{Search Method}.
+
+Practically it makes sense to constrain the search space further. A 3 layer network of 100 hidden units per layer is unlikely to perform significantly differently from a 3 layer network of 101 hidden units per layer. As such it makes sense to sparsify the input space more strongly as the layer size and depth grows.
+
+The downside to this search space is that it does remove a significant number of networks that could be optimal. The assumption that the optimal architecture will have all layers the same size is a strong one, especially in light of the conventional wisdom of setting successive layers to be of a smaller size. One method to attempt to conform to this could be to define a a specific shrinkage pattern (e.g. [1, 1, 1/2, 1/4]) for successive layers. This would still leave a search space of the same size, but with networks of a perhaps more sensible description. This was not investigated in this project, but could be in future work. 
+
+The \textbf{Evaluation Strategy} is a form of training curve extrapolation. In contrast to most methods proposed we take only snapshots of the model performance at particular optimisation steps, up to full training. The objectives of this are to allow the model to make predictions about the performance of all networks in the search space in light of the observed curves without having to fully train them, and to allow for capturing patterns that cannot be expressed easily in the form of kernels that extrapolate well in Gaussian Processes, such as the exponential decay basis \citep{Swersky2014}.
+
+\section{Experimental Design}
+
+In light of the criticisms of \citet{Li}, we look to effectively report the results of this work in a manner which will make comparison to later work possible. There are no other existing works at this time on architecture search in BNNs, and so the results of this method cannot be compared to those. Adequate ablation studies are carried out comparing the proposed work to both random search and to a simplified form of GP based Bayesian Optimisation to demonstrate the effects of the proposed method.
+
+Additionally these methods are compared on an performance per number of samples basis for a effective comparison of their efficiency. These experiments are run over a number of random seeds in order to be confident of their statistical significance. Finally the algorithm is run on 8 different regression tasks to investigate the effect similar but different tasks have on the performance of the algorithm.
+
+The datasets used in these experiments are 8 of the UCI datasets used in \cite{hernandez2015probabilistic}, namely the \bostonname, \concretename, \energyname, \kinname, \powername, \proteinname, \winename, and \yachtname \: datasets.
+
+The experiments run are as follows:\\
+\textbf{Section \ref{sec:hypparam}} looks at the effects of simple hyper-parameters on regression BNN performance.\\
+\textbf{Section \ref{sec:dataaug}} looks at the effect the amount of data in a dataset has on the under or over fitting of a fixed model architecture.\\
+\textbf{Section \ref{sec:pruning}} investigates model pruning in VI BNNs\\
+\textbf{Section \ref{sec:model}} finds optimal hyper-parameter settings for fitting GPAR models to BNN training data.\\
+\textbf{Section \ref{sec:archsearch}} investigates using GPAR based, and standard, Bayesian Optimisation for BNN architecture search.
+
+For fully published code, along with scripts to reproduce the results fully, including random seed settings and exact configurations please refer to the open-source code bases at:
+
+\textbf{Training BNNs and investigating the effects of pruning}:\\\url{https://github.com/MJHutchinson/BayesMLP}
+
+\textbf{Performing architecture searched and GPAR model fitting experiments}:\\\url{https://github.com/MJHutchinson/GPAR_Architecture_Search}
+
+
+\section{GPAR for architecture search}
+
+A common methodology for architecture search in regular neural networks and in other machine learning algorithms has been to apply a standard Bayesian Optimisation scheme utilising Gaussian processes over the final metric of interest, e.g. log likelihood or RMSE. Much work has been done in on designing specific kernels to attempt to draw distance between different architectures. However, the large part of these works have focused on looking only at the final performance of the networks. 
+
+For iterative training procedures it is usually possible to extract some information about the final performance of the network partway through training by looking at the validation performance of the partially trained network. Given the computational expense of training neural networks of any type, it would make sense to utilise the information that can be extracted from the training curves to perform early stopping on networks that appear to be performing poorly. 
+
+This is achieved here by taking snapshots of the networks performance after a series of  given numbers of optimisation steps, and modelling the performance of networks with different hyper-parameter settings at each of these checkpoints using the GPAR model. The GPAR model provides a good model for the data for two reasons: The training of BNNs will always provide closed downwards data, as defined by \citet{Requeima2018}, and the time ordered nature of the training checkpoints presents with a clear and sensible way of breaking the outputs down into being sequentially dependant on previous outputs, 
+
+The GPAR model serves then as the central surrogate model for the performance of the models through training. Since the objective here is still to maximise final performance, we perform Bayesian Optimisation over the final output of the model. The intent is to use earlier observed outputs of the model as a basis for predicting final performance, and using this as a method of early stopping to reduce the computational cost of performing the architecture search. 
+
+Several other parts of the algorithm must be considered:
+\begin{itemize}
+	\item \textbf{Initialisation.} The model cannot fit without any data to fit to. As such, some number of networks are required to initialise the GPAR model. To accomplish this, the search space is randomly searched until a desired number of fully trained networks have been sampled.
+	
+	\item \textbf{Parallel Computation.} Modern computers are capable of training multiple models in parallel. In order to exploit this capability, the search procedure should be able to handle training multiple networks at once. If we wish to train \( k \) models in parallel, simply taking the \( k \) top values from the estimated utility function at each of the considered inputs may not lead to the most optimal search pattern as it is likely the points will be very close together in the search space, all sitting in the same maxima of the utility function. 
+	
+	A method of controlling this is investigated in this report. By deliberately under-sampling the output of the GPAR model, we can inject some small stochastic noise into the utility function. By using a different set of samples for each new point we wish to pick, the noise will be independent and will encourage them to spread across the maxima of the utility function. The effect of this is investigate. More advanced methods for dealing with this problem also exist, and are discussed in future work.
+\end{itemize}
+
+With these things in consideration, we can define the GPAR-based architecture search algorithm, shown in algorithm \ref{alg:bo_gpar}.
+\\
+\begin{algorithm}[h]
+	\footnotesize
+	\KwIn{\( \mathcal{S} \subseteq \mathbb{N}^n\): A subset of the positive integers that defines the hyper-parameter search space.}
+	\KwIn{\( \BNN(\mathbf{x}, i) \): A function that takes \( \mathbf{x} \in \mathcal{S} \) and an integer specifying number of optimisations steps, which trains a Bayesian Neural Network up to the given steps and reports the validation metric at this step, \( \mathbf{y} \)}
+	\KwIn{\( u(\cdot) \) the acquisition function to use}
+	\KwIn{\( L \): A list of the optimisation steps to train to}
+	\KwIn{\( B \): Some budget to spend on the optimisation}
+	\KwIn{\( K \): A number of random samples to train as an initialisation set}
+	\KwIn{\( M \): The number of models to train in parallel}
+	\KwIn{\( N \): The number of samples used to estimate the posterior parameters}
+	\KwOut{\( \mathbf{x}^*, \mathbf{y}^* \): The optimal architecture descriptor and the trained Bayesian Neural Network}
+	\BlankLine
+	\BlankLine
+	\BlankLine
+	\( \mathcal{D} = \{\mathbf{x}_i, \mathbf{y}_{1:L, i}\}_{i=1}^k = \{\mathbf{x}_i, \BNN(\mathbf{x}_{i})\}_{i=1}^k\), for \( \mathbf{x}_i \) drawn randomly from \( \mathcal{S} \)\; 
+	Remove the \( \mathbf{x}_i \) in \( \mathcal{D} \) from \( \mathcal{S} \) and add to \( \mathcal{S}^c \)\;	
+	Update the best found point so far, \( \mathbf{x}^*, \mathbf{y}^* \) with the best point from \( \mathcal{S}^c \)\;
+	\While{\( B \) > 0}{
+		\( f(\cdot) \) = \( fit\_GPAR(\mathcal{D}) \)\;
+		\( samples_{i,j} \) = Draw \( N \) samples from \( f(\mathbf{x}_i)\) for \( \mathbf{x}_i \in \mathcal{S} \), M times \;
+		\( \mu_{i,j}, \sigma^2_{i,j} \) = \( mean(samples_{i,j}) \), \( variance(samples_{i,j}) \)\;
+		\( u_{i,j} = u(\mu_{i,j}, \sigma_{i,j}^2) \)\;
+		\( \mathcal{D}^+ = \{\mathbf{x}_i\) for which \(i = \arg\max\limits_i u_{i, j}\}_{j=1}^M \), ensuring no two elements of \( \mathcal{D}^+ \) are the same\;
+		Advance the training of each point in \( \mathcal{D}^+ \) by one optimisation step set defined by \( L \).\;
+		If any in \( \mathcal{D}^+ \) reach the final optimisation step, remove them from \( \mathcal{S} \) and add to \( S^c \)\;
+		Update the best found point so far, \( \mathbf{x}^*, \mathbf{y}^* \) with the best from, \( \mathcal{S}^c \)\;
+		Update the budget \( B \)\;
+	}
+	
+	\caption{GPAR Based Bayesian Optimisation}
+	\label{alg:bo_gpar}
+\end{algorithm}
